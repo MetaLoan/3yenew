@@ -56,8 +56,8 @@ export function OracleEyeIcon({ className = "" }: { className?: string }) {
               <line
                 key={i}
                 x1="100" y1="100"
-                x2={100 + Math.cos(i * 7.5 * Math.PI / 180) * 42}
-                y2={100 + Math.sin(i * 7.5 * Math.PI / 180) * 42}
+                x2={Math.round((100 + Math.cos(i * 7.5 * Math.PI / 180) * 42) * 100) / 100}
+                y2={Math.round((100 + Math.sin(i * 7.5 * Math.PI / 180) * 42) * 100) / 100}
                 stroke="white"
                 strokeWidth="0.3"
                 opacity="0.2"

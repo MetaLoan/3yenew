@@ -358,4 +358,37 @@
   .hide-scrollbar::-webkit-scrollbar {
     display: none; /* Chrome/Safari/Opera */
   }
+
+  /* Stone choice prompt animations */
+  @keyframes float-stone {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes float-button {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-3px);
+    }
+  }
+
+  .animate-float-stone {
+    animation: float-stone 3s ease-in-out infinite;
+  }
+
+  .animate-float-button {
+    animation: float-button 2.5s ease-in-out infinite;
+    animation-delay: 0s;
+  }
+
+  .animate-float-button-delayed {
+    animation: float-button 2.5s ease-in-out infinite;
+    animation-delay: 0.5s;
+  }
 }
