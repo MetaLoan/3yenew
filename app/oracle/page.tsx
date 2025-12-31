@@ -6,8 +6,8 @@ import { InkRevealText } from "@/components/ink-reveal-text"
 import { MessageRenderer } from "@/components/message-renderer"
 import { OracleInteractiveEye } from "@/components/oracle-interactive-eye"
 import { OracleThinking } from "@/components/oracle-thinking"
-import { StoneFullscreen } from "@/components/stone-fullscreen"
-import { StoneChoicePrompt } from "@/components/stone-choice-prompt"
+import { StoneUnified } from "@/components/stone-unified"
+import { FunctionButtons } from "@/components/function-buttons"
 import { detectIntent } from "@/lib/intent-detection"
 import { generateDeepInterpretation, type ConversationState } from "@/lib/oracle-conversation"
 import type { Message, TextMessage, ChoiceMessage, FunctionResultMessage, SystemMessage } from "@/lib/oracle-types"
@@ -34,7 +34,7 @@ export default function OraclePage() {
   const [conversationState, setConversationState] = useState<ConversationState>("normal")
   const [userQuestion, setUserQuestion] = useState<string>("")
   const [stoneResult, setStoneResult] = useState<StoneResult | null>(null)
-  const [showStoneFullscreen, setShowStoneFullscreen] = useState(false)
+  const [selectedFunction, setSelectedFunction] = useState<"stone" | "tarot" | "echo" | null>(null)
   const eyeTimerRef = useRef<NodeJS.Timeout>()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const messageIdCounterRef = useRef<number>(1000) // 从1000开始，避免与初始消息ID冲突
@@ -60,7 +60,6 @@ export default function OraclePage() {
     if (conversationState === "stone_completed") return
     
     setStoneResult(result)
-    setShowStoneFullscreen(false)
     setConversationState("stone_completed")
     
     // 清空当前输入，防止干扰
@@ -99,24 +98,23 @@ export default function OraclePage() {
         })
       }, 100)
       
-      // 彻底完成后恢复 normal 状态，并清空临时存储的疑惑
+      // 彻底完成后恢复 normal 状态，并清空临时存储的数据
       setConversationState("normal")
       setUserQuestion("")
+      setSelectedFunction(null)
     }, 2000)
   }
 
   // 处理石头退出
   const handleStoneExit = () => {
-    setShowStoneFullscreen(false)
     setConversationState("normal")
     setEyeDirection("center")
+    setSelectedFunction(null)
   }
 
-  // 处理选择接受
+  // 处理选择接受（StoneUnified 内部处理过渡动画）
   const handleChoiceAccept = () => {
     setConversationState("stone_fullscreen")
-    // 先显示全屏（会触发模糊动画），然后延迟显示石头内容
-    setShowStoneFullscreen(true)
   }
 
   // 处理选择拒绝
@@ -130,6 +128,7 @@ export default function OraclePage() {
     }
     setMessages((prev) => [...prev, rejectMessage])
     setConversationState("normal")
+    setSelectedFunction(null)
     
     setTimeout(() => {
       scrollContainerRef.current?.scrollTo({
@@ -137,6 +136,52 @@ export default function OraclePage() {
         behavior: "smooth",
       })
     }, 100)
+  }
+
+  // 处理功能按钮点击（用户可随时切换）
+  const handleFunctionButtonClick = (func: "stone" | "tarot" | "echo") => {
+    // 如果正在全屏交互中，不允许切换
+    if (conversationState === "stone_fullscreen") return
+    
+    // 重置状态，开始新的功能交互
+    setSelectedFunction(func)
+    setUserQuestion("")
+    setConversationState("stone_triggered")
+    setUserQuestion("")
+    
+    // 眼睛看向思考方向
+    setEyeDirection("down-left")
+    setIsThinking(true)
+    
+    // Oracle 回应
+    setTimeout(() => {
+      setIsThinking(false)
+      
+      const funcNames: Record<string, string> = {
+        stone: "Destiny Stone（命运之石）",
+        tarot: "Tarot（塔罗牌）",
+        echo: "Echo（心灵回响）"
+      }
+      
+      const questionMessage: TextMessage = {
+        id: generateMessageId(),
+        type: "text",
+        content: `我看到你想借助 ${funcNames[func]} 来帮助你。你有什么困惑？`,
+        isUser: false,
+        timestamp: "Just now",
+      }
+      setMessages((prev) => [...prev, questionMessage])
+      setConversationState("waiting_for_question")
+      
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        })
+      }, 100)
+      
+      setEyeDirection("center")
+    }, 1500)
   }
 
   const sendMessage = () => {
@@ -246,17 +291,25 @@ export default function OraclePage() {
         setEyeDirection("down-left")
       }, 1500)
 
-        // 2秒后建议石头
-        setTimeout(() => {
-          setIsThinking(false)
-          const suggestionMessage: TextMessage = {
-            id: generateMessageId(),
-            type: "text",
-            content: "我建议你试试这个神秘的石头，他也许会告诉你答案。",
-            isUser: false,
-            timestamp: "Just now",
-          }
-        setMessages((prev) => [...prev, suggestionMessage])
+      // 2秒后确认准备好
+      setTimeout(() => {
+        setIsThinking(false)
+        
+        const funcNames: Record<string, string> = {
+          stone: "Destiny Stone（命运之石）",
+          tarot: "Tarot（塔罗牌）",
+          echo: "Echo（心灵回响）"
+        }
+        const currentFunc = selectedFunction || "stone"
+        
+        const confirmMessage: TextMessage = {
+          id: generateMessageId(),
+          type: "text",
+          content: `好的，我理解了你的困惑。${funcNames[currentFunc]} 已经准备好了，如果你准备好了就开始吧。`,
+          isUser: false,
+          timestamp: "Just now",
+        }
+        setMessages((prev) => [...prev, confirmMessage])
         setConversationState("suggesting_stone")
         
         // 延迟显示选择按钮（在输入框位置）
@@ -338,7 +391,9 @@ export default function OraclePage() {
         </div>
 
         {/* Fixed input area / Choice buttons - 改为绝对定位以覆盖在消息之上实现模糊 */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 pb-24 z-20">
+        <div className={`absolute bottom-0 left-0 right-0 p-6 pb-24 z-20 transition-all duration-500 ${
+          conversationState === "waiting_for_choice" ? "pt-48" : ""
+        }`}>
           {/* 背景层 - 应用模糊和渐变遮罩，不影响内容 */}
           <div 
             className={`absolute inset-0 transition-all duration-500 ${
@@ -355,14 +410,27 @@ export default function OraclePage() {
           />
           {/* 内容层 - 相对定位，不受背景遮罩影响 */}
           <div className="relative max-w-screen-sm mx-auto">
-            {conversationState === "waiting_for_choice" ? (
-              /* 选择提示区域（带悬浮石头） */
-              <StoneChoicePrompt
-                onAccept={handleChoiceAccept}
-                onReject={handleChoiceReject}
+            {/* 输入框区域 - 在石头交互时向下渐隐消失 */}
+            <div 
+              className="space-y-3"
+              style={{
+                opacity: conversationState === "waiting_for_choice" || conversationState === "stone_fullscreen" ? 0 : 1,
+                transform: conversationState === "waiting_for_choice" || conversationState === "stone_fullscreen" 
+                  ? "translateY(20px)" 
+                  : "translateY(0)",
+                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                pointerEvents: conversationState === "waiting_for_choice" || conversationState === "stone_fullscreen" ? "none" : "auto",
+              }}
+            >
+              {/* 功能按钮 - 始终可点击，用户可随时切换 */}
+              <FunctionButtons
+                onStoneClick={() => handleFunctionButtonClick("stone")}
+                onTarotClick={() => handleFunctionButtonClick("tarot")}
+                onEchoClick={() => handleFunctionButtonClick("echo")}
+                disabled={false}
               />
-            ) : (
-              /* 输入框区域 */
+              
+              {/* 输入框 */}
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -373,28 +441,30 @@ export default function OraclePage() {
                   onBlur={() => setIsInputFocused(false)}
                   placeholder={
                     conversationState === "waiting_for_question" 
-                      ? "描述你的疑惑..." 
+                      ? "描述你的困惑..." 
                       : "Ask the oracle..."
                   }
-                  disabled={conversationState === "stone_fullscreen"}
+                  disabled={conversationState === "stone_fullscreen" || conversationState === "waiting_for_choice"}
                   className="flex-1 border hairline border-foreground px-4 py-3 text-sm font-light bg-background focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={conversationState === "stone_fullscreen"}
+                  disabled={conversationState === "stone_fullscreen" || conversationState === "waiting_for_choice"}
                   className="px-6 border hairline border-foreground hover:bg-foreground hover:text-background transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Send
                 </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 全屏石头交互 */}
-      <StoneFullscreen
-        isVisible={showStoneFullscreen}
+      {/* 统一石头交互（一镜到底） */}
+      <StoneUnified
+        isVisible={conversationState === "waiting_for_choice" || conversationState === "stone_fullscreen"}
+        onAccept={handleChoiceAccept}
+        onReject={handleChoiceReject}
         onComplete={handleStoneComplete}
         onExit={handleStoneExit}
       />
