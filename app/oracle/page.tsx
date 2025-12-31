@@ -390,17 +390,11 @@ export default function OraclePage() {
           </div>
         </div>
 
-        {/* Fixed input area / Choice buttons - 改为绝对定位以覆盖在消息之上实现模糊 */}
-        <div className={`absolute bottom-0 left-0 right-0 p-6 pb-24 z-20 transition-all duration-500 ${
-          conversationState === "waiting_for_choice" ? "pt-48" : ""
-        }`}>
+        {/* Fixed input area - 固定高度，不随浮窗变化 */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 pb-24 z-20">
           {/* 背景层 - 应用模糊和渐变遮罩，不影响内容 */}
           <div 
-            className={`absolute inset-0 transition-all duration-500 ${
-              conversationState === "waiting_for_choice" 
-                ? "bg-background/60 backdrop-blur-xl" 
-                : "bg-background/80 backdrop-blur-md"
-            }`}
+            className="absolute inset-0 bg-background/80 backdrop-blur-md"
             style={{
               // 顶部10%渐变，反平方曲线 1-(1-x)²（顶部变化快，接近10%变化慢）
               // ease-out: 0%→0, 2.5%→44%, 5%→75%, 7.5%→94%, 10%→100%

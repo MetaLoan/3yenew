@@ -289,37 +289,7 @@ export function StoneUnified({
         isChoicePhase ? "px-6 max-w-screen-sm mx-auto w-full" : ""
       }`}>
         
-        {/* 石头容器 - 最上层，整体进入/退出 */}
-        <div 
-          className={`relative ${phase === "choice" && animationState === 'visible' ? "animate-float-stone" : ""}`}
-          style={{
-            ...getStoneContainerStyle(),
-            ...(phase === "choice" ? {
-              opacity: animationState === 'visible' || animationState === 'entering' ? 1 : 0,
-              transform: animationState === 'exiting'
-                ? "translateY(-30px) scale(0.9)" // 退出时向上移动
-                : animationState === 'visible' || animationState === 'entering'
-                  ? "translateY(0) scale(1)"
-                  : "translateY(20px) scale(0.9)", // 进入时从下方来
-              transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-            } : {}),
-          }}
-          onMouseDown={phase === "interaction" ? handleHoldStart : undefined}
-          onMouseUp={phase === "interaction" ? handleHoldEnd : undefined}
-          onMouseLeave={phase === "interaction" ? handleHoldEnd : undefined}
-          onTouchStart={phase === "interaction" ? handleHoldStart : undefined}
-          onTouchEnd={phase === "interaction" ? handleHoldEnd : undefined}
-        >
-          <Stone3D
-            size={getStoneSize()}
-            isHolding={isHolding}
-            progress={progress}
-            revealed={revealed}
-            isShaking={isShaking}
-          />
-        </div>
-
-        {/* 选择阶段的 UI - 标题、连接线、按钮，整体进入/退出 */}
+        {/* 选择阶段 - 石头/标题/按钮作为整体，统一动画 */}
         {phase === "choice" && (
           <div 
             className="flex flex-col items-center w-full"
@@ -329,10 +299,21 @@ export function StoneUnified({
                 ? "translateY(30px)" // 退出时向下移动
                 : animationState === 'visible' || animationState === 'entering'
                   ? "translateY(0)" 
-                  : "translateY(-20px)", // 进入时从上方来
+                  : "translateY(30px)", // 进入时从下方来
               transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
+            {/* 石头 */}
+            <div className={`relative ${animationState === 'visible' ? "animate-float-stone" : ""}`}>
+              <Stone3D
+                size={getStoneSize()}
+                isHolding={isHolding}
+                progress={progress}
+                revealed={revealed}
+                isShaking={isShaking}
+              />
+            </div>
+
             {/* 标题 - 带 InkRevealText 效果 */}
             <div className="flex flex-col items-center">
               <h3 className="text-lg font-light tracking-wide">
@@ -361,6 +342,27 @@ export function StoneUnified({
                 拒绝
               </button>
             </div>
+          </div>
+        )}
+
+        {/* 非选择阶段的石头容器 */}
+        {phase !== "choice" && (
+          <div 
+            className="relative"
+            style={getStoneContainerStyle()}
+            onMouseDown={phase === "interaction" ? handleHoldStart : undefined}
+            onMouseUp={phase === "interaction" ? handleHoldEnd : undefined}
+            onMouseLeave={phase === "interaction" ? handleHoldEnd : undefined}
+            onTouchStart={phase === "interaction" ? handleHoldStart : undefined}
+            onTouchEnd={phase === "interaction" ? handleHoldEnd : undefined}
+          >
+            <Stone3D
+              size={getStoneSize()}
+              isHolding={isHolding}
+              progress={progress}
+              revealed={revealed}
+              isShaking={isShaking}
+            />
           </div>
         )}
 
