@@ -38,6 +38,7 @@ export function TarotUnified({
   const [drawnCards, setDrawnCards] = useState<TarotCardData[]>([])
   const [excludedCardIds, setExcludedCardIds] = useState<string[]>([])
   const [flyingCard, setFlyingCard] = useState<FlyingCard | null>(null)
+  const [flippedSlots, setFlippedSlots] = useState<boolean[]>([false, false, false]) // 跟踪每个槽位是否已翻面
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const slotRefs = useRef<Array<HTMLDivElement | null>>([])
   const timeoutsRef = useRef<number[]>([])
@@ -60,6 +61,7 @@ export function TarotUnified({
       setDrawnCards([])
       setExcludedCardIds([])
       setFlyingCard(null)
+      setFlippedSlots([false, false, false])
       setShowExitConfirm(false)
       setAnimationState('hidden')
       schedule(() => setAnimationState('visible'), 50)
@@ -100,14 +102,23 @@ export function TarotUnified({
     setExcludedCardIds(prev => [...prev, card.id])
 
     schedule(() => {
-      // 动画结束后才将卡片放入槽位
+      // 动画结束后才将卡片放入槽位（此时仍显示牌背）
       setDrawnCards(prev => [...prev, card])
       setFlyingCard(null)
       
-      // 如果抽满3张，进入结果页
-      if (drawnCards.length === 2) {
-        schedule(() => setPhase("result"), 200)
-      }
+      // 延迟 200ms 后播放翻面动画
+      schedule(() => {
+        setFlippedSlots(prev => {
+          const next = [...prev]
+          next[targetSlot] = true
+          return next
+        })
+        
+        // 如果抽满3张，等翻面动画结束后进入结果页
+        if (drawnCards.length === 2) {
+          schedule(() => setPhase("result"), 800)
+        }
+      }, 200)
     }, FLY_DURATION_MS)
   }, [drawnCards.length, flyingCard, schedule])
 
@@ -181,17 +192,58 @@ export function TarotUnified({
           willChange: "transform, opacity, filter",
         }}
       >
-        {isInteraction && (
-          <div className="absolute top-[80px] left-0 right-0 flex justify-center gap-6 px-6 pointer-events-none z-10">
+        {/* 卡槽区域 - 在 interaction 和 result 阶段都显示，通过动画过渡位置 */}
+        {(isInteraction || phase === "result") && (
+          <div 
+            className="absolute left-0 right-0 flex justify-center gap-6 px-6 pointer-events-none z-10"
+            style={{
+              top: phase === "result" ? "calc(50% - 140px)" : "80px",
+              transition: "top 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
             {[0, 1, 2].map(i => (
               <div
                 key={i}
                 ref={(el) => { slotRefs.current[i] = el }}
-                className="w-24 h-36 border-[0.5px] border-foreground/10 bg-foreground/[0.02] rounded flex items-center justify-center relative overflow-hidden"
+                className="border-[0.5px] border-foreground/10 bg-foreground/[0.02] rounded flex items-center justify-center relative overflow-hidden"
+                style={{ 
+                  perspective: '600px',
+                  width: phase === "result" ? "128px" : "96px",
+                  height: phase === "result" ? "192px" : "144px",
+                  transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                }}
               >
                 {drawnCards[i] && (
-                  <div className="w-full h-full">
-                    <img src={drawnCards[i].image} alt={drawnCards[i].name} className="w-full h-full object-cover grayscale" />
+                  <div 
+                    className="w-full h-full relative"
+                    style={{
+                      transformStyle: 'preserve-3d',
+                      transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: flippedSlots[i] ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    }}
+                  >
+                    {/* 牌背 */}
+                    <div 
+                      className="absolute inset-0 bg-background flex items-center justify-center p-1 rounded"
+                      style={{ backfaceVisibility: 'hidden' }}
+                    >
+                      <div className="w-full h-full border hairline border-foreground/30 rounded-sm flex items-center justify-center">
+                        <svg width="32" height="32" viewBox="0 0 200 200" className="opacity-60">
+                          <path d="M 10 100 Q 100 45 190 100 Q 100 155 10 100 Z" fill="none" stroke="black" strokeWidth="3" />
+                          <ellipse cx="100" cy="100" rx="8" ry="26" fill="black" />
+                        </svg>
+                      </div>
+                    </div>
+                    {/* 牌面 */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{ 
+                        backfaceVisibility: 'hidden',
+                        transform: 'rotateY(180deg)',
+                      }}
+                    >
+                      <img src={drawnCards[i].image} alt={drawnCards[i].name} className="w-full h-full object-cover grayscale rounded" />
+                    </div>
                   </div>
                 )}
               </div>
@@ -199,18 +251,20 @@ export function TarotUnified({
           </div>
         )}
 
+        {/* 牌组区域 - 在 result 阶段淡出 */}
         <div 
           className="relative pointer-events-auto"
           style={{
             transition: "transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease-out",
-            opacity: phase === "exiting" ? 0 : 1,
+            opacity: phase === "exiting" || phase === "result" ? 0 : 1,
             transform: isChoicePhase ? "scale(0.33)" : "scale(1)",
             zIndex: 20,
             width: '100%',
             height: isChoicePhase ? '320px' : '100%',
+            pointerEvents: phase === "result" ? "none" : "auto",
           }}
         >
-          {(isChoicePhase || isTransitioning || isInteraction) ? (
+          {(isChoicePhase || isTransitioning || isInteraction) && (
             <TarotSpread 
               key={isChoicePhase ? "shuffling" : "active"} 
               onSelect={handleCardSelect} 
@@ -218,24 +272,27 @@ export function TarotUnified({
               initialPhase={isChoicePhase ? "shuffling" : "gathering"}
               excludedCardIds={excludedCardIds}
             />
-          ) : phase === "result" ? (
-            <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-white pointer-events-auto">
-               <div className="flex gap-4 mb-12">
-                  {drawnCards.map((card, i) => (
-                    <div key={i} className="w-32 h-48 border hairline border-foreground rounded overflow-hidden">
-                      <img src={card.image} alt={card.name} className="w-full h-full object-cover grayscale" />
-                    </div>
-                  ))}
-               </div>
-               <InkRevealText text="三张牌阵" className="text-xl font-light mb-6" />
-               <p className="text-xs opacity-60 max-w-md text-center leading-relaxed mb-8">
-                 过去、现在与未来的能量交织，引导着你此刻的困惑与抉择
-               </p>
-               <button onClick={handleFinalComplete} className="px-12 py-3 border hairline border-foreground text-sm font-light hover:bg-foreground hover:text-background transition-all">
-                 Continue
-               </button>
-            </div>
-          ) : null}
+          )}
+        </div>
+
+        {/* 结果页面的标题和按钮 - 淡入显示 */}
+        <div 
+          className="absolute left-0 right-0 flex flex-col items-center pointer-events-none"
+          style={{
+            top: "calc(50% + 80px)",
+            opacity: phase === "result" ? 1 : 0,
+            transform: phase === "result" ? "translateY(0)" : "translateY(20px)",
+            transition: "opacity 0.8s ease-out 0.3s, transform 0.8s ease-out 0.3s",
+            pointerEvents: phase === "result" ? "auto" : "none",
+          }}
+        >
+          <InkRevealText text="三张牌阵" className="text-xl font-light mb-6" />
+          <p className="text-xs opacity-60 max-w-md text-center leading-relaxed mb-8 px-6">
+            过去、现在与未来的能量交织，引导着你此刻的困惑与抉择
+          </p>
+          <button onClick={handleFinalComplete} className="px-12 py-3 border hairline border-foreground text-sm font-light hover:bg-foreground hover:text-background transition-all">
+            Continue
+          </button>
         </div>
 
         {isChoicePhase && (
