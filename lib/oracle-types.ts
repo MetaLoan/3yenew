@@ -7,12 +7,16 @@ export interface StoneResult {
 }
 
 export interface TarotResult {
+  cards: TarotCardData[];
+  interpretation?: string;
+}
+
+export interface TarotCardData {
   id: string;
   name: string;
   image: string;
   keywords: string[];
   meaning: string;
-  summary?: string;
 }
 
 interface BaseMessage {
