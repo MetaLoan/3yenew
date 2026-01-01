@@ -203,73 +203,47 @@ export function StoneUnified({
 
   if (!isVisible) return null
 
-  // 计算石头的样式（用于一镜到底效果）
-  const getStoneContainerStyle = () => {
-    const baseStyle = {
-      transition: "all 1s cubic-bezier(0.4, 0, 0.2, 1)",
-    }
-    
-    switch (phase) {
-      case "choice":
-        return {
-          ...baseStyle,
-          transform: "translateY(0) scale(1)",
-        }
-      case "transitioning":
-      case "interaction":
-      case "result":
-        return {
-          ...baseStyle,
-          transform: "translateY(0) scale(1.5)",
-        }
-      case "exiting":
-        return {
-          ...baseStyle,
-          transform: "translateY(0) scale(1.5)",
-          opacity: 0,
-        }
-      default:
-        return baseStyle
-    }
-  }
-
-  // 计算石头大小
-  const getStoneSize = () => {
-    if (phase === "choice") return 120
-    return 200
-  }
-
   // choice 阶段：定位在底部输入区域
   // 其他阶段：全屏居中
   const isChoicePhase = phase === "choice"
+  const isTransitioning = phase === "transitioning"
 
   return (
     <div 
-      className={`fixed z-[100] flex flex-col items-center transition-all duration-1000 ${
+      className={`fixed z-[100] transition-all duration-1000 ${
         phase === "exiting" ? "opacity-0" : "opacity-100"
-      } ${
-        isChoicePhase 
-          ? "bottom-16 left-0 right-0 pb-5" 
-          : "inset-0 justify-center"
       }`}
       style={{
-        background: isChoicePhase || isEntering 
-          ? "transparent" 
-          : "rgba(255, 255, 255, 1)",
+        // 询问阶段占据 320px 高度，底部距离菜单栏（64px）上边缘 20px，共 84px
+        bottom: isChoicePhase ? "84px" : "0", 
+        left: 0,
+        right: 0,
+        height: isChoicePhase ? "320px" : "100vh",
+        top: isChoicePhase ? "auto" : 0,
       }}
     >
-      {/* 背景遮罩 - 仅在非 choice 阶段显示 */}
+      {/* 统一背景层 - 初始为模糊遮罩，过渡到全屏纯白 */}
       <div 
-        className={`absolute inset-0 bg-white transition-opacity duration-1000 ${
-          isChoicePhase ? "opacity-0 pointer-events-none" : "opacity-100"
+        className={`absolute inset-0 transition-all duration-1000 ${
+          isChoicePhase ? "bg-background/80 backdrop-blur-md" : "bg-white"
         }`}
+        style={{
+          opacity: isChoicePhase ? 1 : (isTransitioning ? 1 : 1),
+          maskImage: isChoicePhase 
+            ? "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.44) 2.5%, rgba(0,0,0,0.75) 5%, rgba(0,0,0,0.94) 7.5%, black 10%)"
+            : "none",
+          WebkitMaskImage: isChoicePhase 
+            ? "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.44) 2.5%, rgba(0,0,0,0.75) 5%, rgba(0,0,0,0.94) 7.5%, black 10%)"
+            : "none",
+          pointerEvents: isChoicePhase ? "none" : "auto",
+        }}
       />
 
       {/* 退出按钮 - 仅在交互阶段显示 */}
       {(phase === "interaction" || phase === "result") && (
         <button
           onClick={handleExit}
-          className="absolute top-6 right-6 z-50 p-2 border hairline border-foreground/30 hover:bg-foreground/10 transition-colors"
+          className="absolute top-6 right-6 z-50 p-2 border hairline border-foreground/30 hover:bg-foreground/10 transition-colors pointer-events-auto"
           aria-label="Exit"
         >
           <X className="w-5 h-5" />
@@ -278,112 +252,124 @@ export function StoneUnified({
 
       {/* 退出确认提示 */}
       {showExitConfirm && (
-        <div className="absolute top-20 right-6 z-50 border hairline border-foreground bg-background p-4 max-w-xs">
+        <div className="absolute top-20 right-6 z-50 border hairline border-foreground bg-background p-4 max-w-xs pointer-events-auto">
           <p className="text-xs font-light mb-2">确定要退出吗？</p>
           <p className="text-[10px] opacity-60 font-light">退出后将无法继续此次占卜</p>
         </div>
       )}
 
-      {/* 主内容区域 */}
-      <div className={`relative z-10 flex flex-col items-center ${
-        isChoicePhase ? "px-6 max-w-screen-sm mx-auto w-full" : ""
-      }`}>
-        
-        {/* 选择阶段 - 石头/标题/按钮作为整体，统一动画 */}
-        {phase === "choice" && (
-          <div 
-            className="flex flex-col items-center w-full"
-            style={{
-              opacity: animationState === 'visible' || animationState === 'entering' ? 1 : 0,
-              transform: animationState === 'exiting' 
-                ? "translateY(30px)" // 退出时向下移动
-                : animationState === 'visible' || animationState === 'entering'
-                  ? "translateY(0)" 
-                  : "translateY(30px)", // 进入时从下方来
-              transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
-            {/* 石头 */}
-            <div className={`relative ${animationState === 'visible' ? "animate-float-stone" : ""}`}>
-              <Stone3D
-                size={getStoneSize()}
-                isHolding={isHolding}
-                progress={progress}
-                revealed={revealed}
-                isShaking={isShaking}
-              />
-            </div>
+      {/* 询问弹窗内元素 - 采用绝对布局实现平滑过渡 */}
+      <div 
+        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        style={{
+          transform: isChoicePhase 
+            ? "translateY(-40px)" // 整体上移 40px，解决底部溢出并确保距离菜单栏有足够空间
+            : "translateY(0)", 
+          transition: "transform 1s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        {/* 石头 - 核心元素 */}
+        <div 
+          className={`absolute pointer-events-auto ${isChoicePhase && animationState === 'visible' ? "animate-float-stone" : ""}`}
+          style={{
+            // 过渡动画
+            transition: "all 1s cubic-bezier(0.4, 0, 0.2, 1)",
+            // 根据阶段设置透明度
+            opacity: isChoicePhase 
+              ? (animationState === 'visible' || animationState === 'entering' ? 1 : 0)
+              : (phase === "exiting" ? 0 : 1),
+            // 使用 scale 实现大小变化（120px -> 200px = 1.67倍）
+            transform: isChoicePhase ? "scale(1)" : "scale(1.67)",
+            zIndex: 20,
+          }}
+          onMouseDown={phase === "interaction" ? handleHoldStart : undefined}
+          onMouseUp={handleHoldEnd}
+          onMouseLeave={handleHoldEnd}
+          onTouchStart={phase === "interaction" ? handleHoldStart : undefined}
+          onTouchEnd={handleHoldEnd}
+        >
+          <Stone3D
+            size={120}
+            isHolding={isHolding}
+            progress={progress}
+            revealed={revealed}
+            isShaking={isShaking}
+          />
+        </div>
 
-            {/* 标题 - 带 InkRevealText 效果 */}
-            <div className="flex flex-col items-center">
-              <h3 className="text-lg font-light tracking-wide">
-                {(animationState === 'visible' || animationState === 'entering') && <InkRevealText text="是否进入Fate Stone" />}
-              </h3>
-            </div>
-
-            {/* 细线 */}
-            <div className="w-px h-5 bg-foreground/20 my-2" />
-
-            {/* 按钮区域 */}
-            <div className="relative flex gap-4 w-full justify-center">
-              {/* 接受按钮 */}
-              <button
-                onClick={handleAccept}
-                className="w-32 border hairline border-foreground py-3 text-sm font-light bg-background text-foreground hover:bg-foreground hover:text-background transition-colors animate-float-button shadow-sm"
-              >
-                接受
-              </button>
-
-              {/* 拒绝按钮 */}
-              <button
-                onClick={handleReject}
-                className="w-32 border hairline border-foreground py-3 text-sm font-light bg-foreground text-background hover:bg-background hover:text-foreground transition-colors animate-float-button-delayed shadow-sm"
-              >
-                拒绝
-              </button>
-            </div>
+        {/* 选择阶段的 UI 元素 - 绝对定位相对于中心点偏移 */}
+        <div 
+          className="absolute w-full flex flex-col items-center pointer-events-none"
+          style={{
+            top: "calc(50% + 60px)", // 稍微收紧石头和文字的距离
+            opacity: isTransitioning 
+              ? 0 // 过渡时淡出
+              : (animationState === 'visible' || animationState === 'entering' ? 1 : 0),
+            transform: isTransitioning
+              ? "translateY(30px)" 
+              : (animationState === 'exiting' 
+                  ? "translateY(30px)" 
+                  : "translateY(0)"),
+            transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          {/* 标题 */}
+          <div className="flex flex-col items-center mb-2">
+            <h3 className="text-lg font-light tracking-wide">
+              {(animationState === 'visible' || animationState === 'entering') && <InkRevealText text="是否进入Fate Stone" />}
+            </h3>
           </div>
-        )}
 
-        {/* 非选择阶段的石头容器 */}
-        {phase !== "choice" && (
-          <div 
-            className="relative"
-            style={getStoneContainerStyle()}
-            onMouseDown={phase === "interaction" ? handleHoldStart : undefined}
-            onMouseUp={phase === "interaction" ? handleHoldEnd : undefined}
-            onMouseLeave={phase === "interaction" ? handleHoldEnd : undefined}
-            onTouchStart={phase === "interaction" ? handleHoldStart : undefined}
-            onTouchEnd={phase === "interaction" ? handleHoldEnd : undefined}
-          >
-            <Stone3D
-              size={getStoneSize()}
-              isHolding={isHolding}
-              progress={progress}
-              revealed={revealed}
-              isShaking={isShaking}
-            />
+          {/* 细线 */}
+          <div className="w-px h-5 bg-foreground/20 mb-2" />
+
+          {/* 按钮区域 */}
+          <div className="flex gap-4 w-full justify-center px-6 max-w-sm pointer-events-auto">
+            <button
+              onClick={handleAccept}
+              className="flex-1 border hairline border-foreground py-3 text-sm font-light bg-background text-foreground hover:bg-foreground hover:text-background transition-colors animate-float-button shadow-sm"
+            >
+              接受
+            </button>
+            <button
+              onClick={handleReject}
+              className="flex-1 border hairline border-foreground py-3 text-sm font-light bg-foreground text-background hover:bg-background hover:text-foreground transition-colors animate-float-button-delayed shadow-sm"
+            >
+              拒绝
+            </button>
           </div>
-        )}
+        </div>
 
-        {/* 过渡阶段 - 仅显示石头 */}
-        {phase === "transitioning" && (
-          <p className="text-sm opacity-40 font-light mt-8 animate-pulse">
+        {/* 提示文字层 - 绝对定位 */}
+        <div 
+          className="absolute w-full text-center"
+          style={{ 
+            top: "calc(50% + 160px)",
+            opacity: isTransitioning ? 1 : 0, 
+            transition: "opacity 1s",
+            pointerEvents: "none"
+          }}
+        >
+          <p className="text-sm opacity-40 font-light mt-8 animate-pulse text-center">
             正在连接命运之石...
           </p>
-        )}
+        </div>
 
-        {/* 交互阶段的提示 */}
+        {/* 交互阶段提示 - 绝对定位 */}
         {phase === "interaction" && (
-          <p className="text-sm opacity-60 font-light mt-8 text-center">
-            长按石头，直到它揭示答案
-          </p>
+          <div className="absolute w-full text-center" style={{ top: "calc(50% + 180px)" }}>
+            <p className="text-sm opacity-60 font-light mt-8 text-center animate-in fade-in duration-1000">
+              长按石头，直到它揭示答案
+            </p>
+          </div>
         )}
 
-        {/* 结果阶段 */}
+        {/* 结果阶段层 - 绝对定位 */}
         {phase === "result" && (
-          <div className="mt-8 flex flex-col items-center">
-            {/* 结果文字 */}
+          <div 
+            className="absolute w-full flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-1000 pointer-events-auto"
+            style={{ top: "calc(50% + 140px)" }}
+          >
             <p className="text-2xl font-light tracking-widest mb-2">
               {oracle.result}
             </p>
@@ -391,7 +377,6 @@ export function StoneUnified({
               {oracle.message}
             </p>
 
-            {/* Follow / No Way 按钮 */}
             <div className="flex gap-4">
               <button
                 onClick={() => handleChoice("follow")}
@@ -412,4 +397,3 @@ export function StoneUnified({
     </div>
   )
 }
-

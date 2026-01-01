@@ -392,12 +392,12 @@ export default function OraclePage() {
 
         {/* Fixed input area - 固定高度，不随浮窗变化 */}
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-24 z-20">
-          {/* 背景层 - 应用模糊和渐变遮罩，不影响内容 */}
+          {/* 背景层 - 应用模糊和渐变遮罩，不影响内容。在石头选择时由 StoneUnified 接管 */}
           <div 
-            className="absolute inset-0 bg-background/80 backdrop-blur-md"
+            className="absolute inset-0 bg-background/80 backdrop-blur-md transition-opacity duration-500"
             style={{
+              opacity: conversationState === "waiting_for_choice" || conversationState === "stone_fullscreen" ? 0 : 1,
               // 顶部10%渐变，反平方曲线 1-(1-x)²（顶部变化快，接近10%变化慢）
-              // ease-out: 0%→0, 2.5%→44%, 5%→75%, 7.5%→94%, 10%→100%
               maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.44) 2.5%, rgba(0,0,0,0.75) 5%, rgba(0,0,0,0.94) 7.5%, black 10%)",
               WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.44) 2.5%, rgba(0,0,0,0.75) 5%, rgba(0,0,0,0.94) 7.5%, black 10%)",
             }}
