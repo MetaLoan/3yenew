@@ -6,24 +6,28 @@ import { InkRevealText } from "./ink-reveal-text"
 
 interface TarotSpreadProps {
   onSelect: (card: TarotCardData) => void
+  initialPhase?: Phase
 }
 
 type Phase = "shuffling" | "gathering" | "expanding" | "scrolling" | "selected"
 
-export function TarotSpread({ onSelect }: TarotSpreadProps) {
-  const [phase, setPhase] = useState<Phase>("shuffling")
+export function TarotSpread({ onSelect, initialPhase = "shuffling" }: TarotSpreadProps) {
+  const [phase, setPhase] = useState<Phase>(initialPhase)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  const [cards, setCards] = useState<TarotCardData[]>([])
+  const [cards, setCards] = useState<TarotCardData[]>(() => {
+    // 立即初始化卡牌，避免第一帧为空导致动画失效
+    return [...tarotCards]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 11)
+  })
   const cardRefs = useRef<Array<HTMLDivElement | null>>([])
   const [frozenTransforms, setFrozenTransforms] = useState<string[] | null>(null)
   const [gatherArmed, setGatherArmed] = useState(false)
 
-  // Initialize with 11 random cards
+  // 不再需要在 useEffect 中初始化
   useEffect(() => {
-    const randomSelection = [...tarotCards]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 11)
-    setCards(randomSelection)
+    // 已经初始化过了，但如果外部想重新洗牌可以保留逻辑
+    // 如果是初始挂载且已经是 gathering 状态，确保触发向 expanding 的转换
   }, [])
 
   // 点击洗牌时冻结当前位置
@@ -199,11 +203,7 @@ export function TarotSpread({ onSelect }: TarotSpreadProps) {
 
       {/* Instruction text */}
       <div className="absolute bottom-[-15px] left-0 right-0 text-center pointer-events-none z-20">
-        {phase === "shuffling" && (
-          <p className="text-xs opacity-100 font-bold animate-bounce-text">
-            Tap to pick cards
-          </p>
-        )}
+        {phase === "shuffling" && null}
         {(phase === "gathering" || phase === "expanding") && (
           <p className="text-xs opacity-60 tracking-widest uppercase">
             ...

@@ -3,12 +3,17 @@
 export type ConversationState = 
   | "normal"              // 正常对话
   | "stone_triggered"     // 用户触发了STONE
+  | "tarot_triggered"     // 用户触发了TAROT
   | "waiting_for_question" // 等待用户描述疑惑
   | "question_received"   // 已收到疑惑
   | "suggesting_stone"    // 正在建议石头
+  | "suggesting_tarot"    // 正在建议塔罗
   | "waiting_for_choice"  // 等待用户选择接受/拒绝
   | "stone_fullscreen"    // 全屏石头交互中
+  | "tarot_fullscreen"    // 全屏塔罗交互中
   | "stone_completed"     // 石头交互完成
+  | "tarot_completed"     // 塔罗交互完成
+  | "waiting_for_suggestion_confirmation" // 等待用户确认建议
 
 export interface ConversationContext {
   state: ConversationState

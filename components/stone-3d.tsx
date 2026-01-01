@@ -165,7 +165,7 @@ export function Stone3D({
       const currentRevealed = revealedRef.current
       
       // 根据长按状态调整旋转速度
-      const speedMultiplier = currentIsHolding ? 1 + (currentProgress / 100) * 4 : 1 // 最高5倍速
+      const speedMultiplier = currentIsHolding ? 1 + currentProgress * 8 : 1 // 最高9倍速，更明显的加速
       time += 0.01 * speedMultiplier
 
       // 自动旋转
@@ -184,7 +184,7 @@ export function Stone3D({
       }
 
       // 长按时石头变大
-      const targetScale = currentIsHolding ? 1 + (currentProgress / 100) * 0.3 : 1 // 最大1.3倍
+      const targetScale = currentIsHolding ? 1 + currentProgress * 0.5 : 1 // 最大1.5倍，更明显的放大
       stone.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1)
 
       // 长按时光源颜色变化
@@ -203,8 +203,8 @@ export function Stone3D({
         })
       }
       
-      // 丝滑过渡透明度
-      const targetOpacity = currentRevealed ? 0.5 : 1
+      // 保持石头不透明，不再受 revealed 影响
+      const targetOpacity = 1
       currentOpacity += (targetOpacity - currentOpacity) * 0.08
       material.opacity = currentOpacity
       material.transparent = currentOpacity < 0.99

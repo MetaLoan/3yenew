@@ -7,10 +7,11 @@ import { MessageRenderer } from "@/components/message-renderer"
 import { OracleInteractiveEye } from "@/components/oracle-interactive-eye"
 import { OracleThinking } from "@/components/oracle-thinking"
 import { StoneUnified } from "@/components/stone-unified"
+import { TarotUnified } from "@/components/tarot-unified"
 import { FunctionButtons } from "@/components/function-buttons"
 import { detectIntent } from "@/lib/intent-detection"
 import { generateDeepInterpretation, type ConversationState } from "@/lib/oracle-conversation"
-import type { Message, TextMessage, ChoiceMessage, FunctionResultMessage, SystemMessage } from "@/lib/oracle-types"
+import type { Message, TextMessage, ChoiceMessage, FunctionResultMessage, SystemMessage, TarotResult } from "@/lib/oracle-types"
 import type { StoneResult } from "@/lib/oracle-types"
 
 const initialMessages: Message[] = [
@@ -34,6 +35,7 @@ export default function OraclePage() {
   const [conversationState, setConversationState] = useState<ConversationState>("normal")
   const [userQuestion, setUserQuestion] = useState<string>("")
   const [stoneResult, setStoneResult] = useState<StoneResult | null>(null)
+  const [tarotResult, setTarotResult] = useState<TarotResult | null>(null)
   const [selectedFunction, setSelectedFunction] = useState<"stone" | "tarot" | "echo" | null>(null)
   const eyeTimerRef = useRef<NodeJS.Timeout>()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -117,7 +119,7 @@ export default function OraclePage() {
     setConversationState("stone_fullscreen")
   }
 
-  // 处理选择拒绝
+  // 处理选择拒绝 (Stone)
   const handleChoiceReject = () => {
     const rejectMessage: TextMessage = {
       id: generateMessageId(),
@@ -138,16 +140,94 @@ export default function OraclePage() {
     }, 100)
   }
 
+  // 处理塔罗完成
+  const handleTarotComplete = (result: TarotResult) => {
+    if (conversationState === "tarot_completed") return
+    
+    setTarotResult(result)
+    setConversationState("tarot_completed")
+    
+    setInput("")
+    
+    const systemEvent: SystemMessage = {
+      id: generateMessageId(),
+      type: "system",
+      content: `你刚刚通过塔罗获得牌面：${result.name}`,
+      isUser: false,
+      timestamp: "Just now",
+    }
+    
+    setMessages((prev) => [...prev, systemEvent])
+    
+    setTimeout(() => {
+      // 生成塔罗解读
+      const interpretation = result.summary || `塔罗牌 ${result.name} 揭示了：${result.meaning}`
+      const interpretationMessage: FunctionResultMessage = {
+        id: generateMessageId(),
+        type: "function-result",
+        functionName: "tarot",
+        result,
+        isUser: false,
+        timestamp: "Just now",
+        summary: interpretation,
+      }
+      setMessages((prev) => [...prev, interpretationMessage])
+      
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        })
+      }, 100)
+      
+      setConversationState("normal")
+      setUserQuestion("")
+      setSelectedFunction(null)
+    }, 2000)
+  }
+
+  // 处理塔罗退出
+  const handleTarotExit = () => {
+    setConversationState("normal")
+    setEyeDirection("center")
+    setSelectedFunction(null)
+  }
+
+  // 处理选择接受（TarotUnified 内部处理过渡动画）
+  const handleTarotChoiceAccept = () => {
+    setConversationState("tarot_fullscreen")
+  }
+
+  // 处理选择拒绝
+  const handleTarotChoiceReject = () => {
+    const rejectMessage: TextMessage = {
+      id: generateMessageId(),
+      type: "text",
+      content: "我理解了。也许现在还不是时候。当你准备好时，塔罗牌会一直在那里等待你。",
+      isUser: false,
+      timestamp: "Just now",
+    }
+    setMessages((prev) => [...prev, rejectMessage])
+    setConversationState("normal")
+    setSelectedFunction(null)
+    
+    setTimeout(() => {
+      scrollContainerRef.current?.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      })
+    }, 100)
+  }
+
   // 处理功能按钮点击（用户可随时切换）
   const handleFunctionButtonClick = (func: "stone" | "tarot" | "echo") => {
     // 如果正在全屏交互中，不允许切换
-    if (conversationState === "stone_fullscreen") return
+    if (conversationState === "stone_fullscreen" || conversationState === "tarot_fullscreen") return
     
     // 重置状态，开始新的功能交互
     setSelectedFunction(func)
     setUserQuestion("")
-    setConversationState("stone_triggered")
-    setUserQuestion("")
+    setConversationState(func === "stone" ? "stone_triggered" : func === "tarot" ? "tarot_triggered" : "normal")
     
     // 眼睛看向思考方向
     setEyeDirection("down-left")
@@ -199,6 +279,55 @@ export default function OraclePage() {
     setMessages((prev) => [...prev, userMessage])
     setInput("")
 
+    // 模拟特定交互逻辑 - 提高到最高优先级，拦截所有状态
+    if (userInput.includes("我好累不想上班")) {
+      setSelectedFunction("tarot")
+      setConversationState("normal") // 强制重置状态确保剧情触发
+      
+      eyeTimerRef.current = setTimeout(() => {
+        setIsThinking(true)
+        setEyeDirection("down-left")
+      }, 1000)
+
+      // 第一条回复
+      setTimeout(() => {
+        setIsThinking(false)
+        const resp1: TextMessage = {
+          id: generateMessageId(),
+          type: "text",
+          content: "根据我的分析你今天磁场比较弱，这是正常现象。",
+          isUser: false,
+          timestamp: "Just now",
+        }
+        setMessages((prev) => [...prev, resp1])
+        
+        // 延迟后自动发第二条
+        setTimeout(() => {
+          setIsThinking(true)
+          setTimeout(() => {
+            setIsThinking(false)
+            const resp2: TextMessage = {
+              id: generateMessageId(),
+              type: "text",
+              content: "我建议你要不抽个塔罗我给你解读下如何解决你当前的困境？",
+              isUser: false,
+              timestamp: "Just now",
+            }
+            setMessages((prev) => [...prev, resp2])
+            setConversationState("waiting_for_suggestion_confirmation")
+            
+            setTimeout(() => {
+              scrollContainerRef.current?.scrollTo({
+                top: scrollContainerRef.current.scrollHeight,
+                behavior: "smooth",
+              })
+            }, 100)
+          }, 2000)
+        }, 1500)
+      }, 2500)
+      return
+    }
+
     // 用户发送消息时，眼睛看向右下角
     setEyeDirection("down-right")
     if (eyeTimerRef.current) clearTimeout(eyeTimerRef.current)
@@ -213,10 +342,11 @@ export default function OraclePage() {
 
     // 根据对话状态处理
     if (conversationState === "normal") {
-      // 检测是否触发STONE
+      // 检测是否触发功能
       const intent = detectIntent(userInput)
-      if (intent.intent === "stone" && intent.confidence > 0.5) {
-        setConversationState("stone_triggered")
+      if (intent.intent && (intent.intent === "stone" || intent.intent === "tarot") && intent.confidence > 0.5) {
+        setSelectedFunction(intent.intent)
+        setConversationState(intent.intent === "stone" ? "stone_triggered" : "tarot_triggered")
         setUserQuestion("") // 重置疑惑，开始新流程
         
         eyeTimerRef.current = setTimeout(() => {
@@ -227,10 +357,14 @@ export default function OraclePage() {
         // 2秒后询问疑惑
         setTimeout(() => {
           setIsThinking(false)
+          const funcNames: Record<string, string> = {
+            stone: "Destiny Stone",
+            tarot: "Tarot"
+          }
           const questionMessage: TextMessage = {
             id: generateMessageId(),
             type: "text",
-            content: "你有什么疑惑？",
+            content: `I see you seek the guidance of ${funcNames[intent.intent!]}. What weighs on your heart?`,
             isUser: false,
             timestamp: "Just now",
           }
@@ -281,6 +415,40 @@ export default function OraclePage() {
           }, 1000)
         }, 6500)
       }
+    } else if (conversationState === "waiting_for_suggestion_confirmation") {
+      // 处理确认建议
+      if (userInput.includes("行吧") || userInput.includes("好") || userInput.includes("ok")) {
+        eyeTimerRef.current = setTimeout(() => {
+          setIsThinking(true)
+          setEyeDirection("down-left")
+        }, 800)
+
+        setTimeout(() => {
+          setIsThinking(false)
+          const resp3: TextMessage = {
+            id: generateMessageId(),
+            type: "text",
+            content: "OK，这就安排。。。",
+            isUser: false,
+            timestamp: "Just now",
+          }
+          setMessages((prev) => [...prev, resp3])
+          
+          // 进入选择确认阶段
+          setTimeout(() => {
+            setConversationState("waiting_for_choice")
+            setTimeout(() => {
+              scrollContainerRef.current?.scrollTo({
+                top: scrollContainerRef.current.scrollHeight,
+                behavior: "smooth",
+              })
+            }, 100)
+          }, 1500)
+        }, 1500)
+      } else {
+        setConversationState("normal")
+        setSelectedFunction(null)
+      }
     } else if (conversationState === "waiting_for_question") {
       // 用户回答了疑惑
       setUserQuestion(userInput)
@@ -310,7 +478,7 @@ export default function OraclePage() {
           timestamp: "Just now",
         }
         setMessages((prev) => [...prev, confirmMessage])
-        setConversationState("suggesting_stone")
+        setConversationState(currentFunc === "stone" ? "suggesting_stone" : "suggesting_tarot")
         
         // 延迟显示选择按钮（在输入框位置）
         setTimeout(() => {
@@ -455,13 +623,26 @@ export default function OraclePage() {
       </div>
 
       {/* 统一石头交互（一镜到底） */}
-      <StoneUnified
-        isVisible={conversationState === "waiting_for_choice" || conversationState === "stone_fullscreen"}
-        onAccept={handleChoiceAccept}
-        onReject={handleChoiceReject}
-        onComplete={handleStoneComplete}
-        onExit={handleStoneExit}
-      />
+      {selectedFunction === "stone" && (
+        <StoneUnified
+          isVisible={conversationState === "waiting_for_choice" || conversationState === "stone_fullscreen"}
+          onAccept={handleChoiceAccept}
+          onReject={handleChoiceReject}
+          onComplete={handleStoneComplete}
+          onExit={handleStoneExit}
+        />
+      )}
+
+      {/* 统一塔罗交互 */}
+      {selectedFunction === "tarot" && (
+        <TarotUnified
+          isVisible={conversationState === "waiting_for_choice" || conversationState === "tarot_fullscreen"}
+          onAccept={handleTarotChoiceAccept}
+          onReject={handleTarotChoiceReject}
+          onComplete={handleTarotComplete}
+          onExit={handleTarotExit}
+        />
+      )}
 
       <BottomNav />
     </main>

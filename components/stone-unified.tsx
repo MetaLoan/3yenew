@@ -69,14 +69,12 @@ export function StoneUnified({
       setShowExitConfirm(false)
       setAnimationState('hidden')
       
-      // 整体进入动画
-      setTimeout(() => {
-        setAnimationState('entering')
-      }, 50)
-      setTimeout(() => {
+      // 直接从 hidden 过渡到 visible，实现模糊渐显
+      const timer = setTimeout(() => {
         setAnimationState('visible')
         setIsEntering(false)
-      }, 600)
+      }, 50)
+      return () => clearTimeout(timer)
     }
   }, [isVisible])
 
@@ -88,7 +86,7 @@ export function StoneUnified({
     // 过渡动画完成后进入交互阶段
     setTimeout(() => {
       setPhase("interaction")
-    }, 1000)
+    }, 1200)
   }, [onAccept])
 
   // 处理拒绝 - 整体退出动画（反方向）
@@ -210,31 +208,27 @@ export function StoneUnified({
 
   return (
     <div 
-      className={`fixed z-[100] transition-all duration-1000 ${
+      className={`fixed z-[100] inset-0 transition-all duration-1000 ${
         phase === "exiting" ? "opacity-0" : "opacity-100"
-      }`}
-      style={{
-        // 询问阶段占据 320px 高度，底部距离菜单栏（64px）上边缘 20px，共 84px
-        bottom: isChoicePhase ? "84px" : "0", 
-        left: 0,
-        right: 0,
-        height: isChoicePhase ? "320px" : "100vh",
-        top: isChoicePhase ? "auto" : 0,
-      }}
+      } pointer-events-none`}
     >
-      {/* 统一背景层 - 初始为模糊遮罩，过渡到全屏纯白 */}
+      {/* 统一背景层 - 始终全屏，通过 clipPath 实现局部到全屏的无缝切换 */}
       <div 
-        className={`absolute inset-0 transition-all duration-1000 ${
+        className={`absolute left-0 right-0 transition-all duration-[1200ms] cubic-bezier(0.4, 0, 0.2, 1) ${
           isChoicePhase ? "bg-background/80 backdrop-blur-md" : "bg-white"
         }`}
         style={{
-          opacity: isChoicePhase ? 1 : (isTransitioning ? 1 : 1),
+          // 在选择阶段，定位在底部 (320px高度 + 64px菜单偏移)
+          bottom: isChoicePhase ? "64px" : "0",
+          top: isChoicePhase ? "calc(100% - 384px)" : "0",
+          opacity: 1,
           maskImage: isChoicePhase 
             ? "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.44) 2.5%, rgba(0,0,0,0.75) 5%, rgba(0,0,0,0.94) 7.5%, black 10%)"
             : "none",
           WebkitMaskImage: isChoicePhase 
             ? "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.44) 2.5%, rgba(0,0,0,0.75) 5%, rgba(0,0,0,0.94) 7.5%, black 10%)"
             : "none",
+          // 仅在非选择阶段拦截点击
           pointerEvents: isChoicePhase ? "none" : "auto",
         }}
       />
@@ -258,27 +252,34 @@ export function StoneUnified({
         </div>
       )}
 
-      {/* 询问弹窗内元素 - 采用绝对布局实现平滑过渡 */}
+      {/* 核心内容容器 - 始终全屏，通过 transform 模拟位移 */}
       <div 
-        className="absolute inset-0 flex items-center justify-center pointer-events-none"
+        className="absolute inset-0 pointer-events-none"
         style={{
+          // 使用 flex 布局但在 choice 阶段向下位移
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          // 位置保持稳定，不再从底部滑入
           transform: isChoicePhase 
-            ? "translateY(-40px)" // 整体上移 40px，解决底部溢出并确保距离菜单栏有足够空间
+            ? "translateY(calc(50vh - 224px - 40px))" 
             : "translateY(0)", 
-          transition: "transform 1s cubic-bezier(0.4, 0, 0.2, 1)",
+          // 实现高斯模糊渐显效果
+          opacity: animationState === 'visible' ? 1 : 0,
+          filter: animationState === 'visible' ? 'blur(0px)' : 'blur(10px)',
+          transition: "transform 1.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease-out, filter 0.8s ease-out",
+          willChange: "transform, opacity, filter", // 强制开启 GPU 加速
         }}
       >
         {/* 石头 - 核心元素 */}
         <div 
           className={`absolute pointer-events-auto ${isChoicePhase && animationState === 'visible' ? "animate-float-stone" : ""}`}
           style={{
-            // 过渡动画
-            transition: "all 1s cubic-bezier(0.4, 0, 0.2, 1)",
-            // 根据阶段设置透明度
+            transition: "all 1.2s cubic-bezier(0.4, 0, 0.2, 1)",
             opacity: isChoicePhase 
               ? (animationState === 'visible' || animationState === 'entering' ? 1 : 0)
               : (phase === "exiting" ? 0 : 1),
-            // 使用 scale 实现大小变化（120px -> 200px = 1.67倍）
             transform: isChoicePhase ? "scale(1)" : "scale(1.67)",
             zIndex: 20,
           }}
@@ -297,43 +298,32 @@ export function StoneUnified({
           />
         </div>
 
-        {/* 选择阶段的 UI 元素 - 绝对定位相对于中心点偏移 */}
+        {/* 选择阶段的 UI 元素 - 标题/按钮 */}
         <div 
           className="absolute w-full flex flex-col items-center pointer-events-none"
           style={{
-            top: "calc(50% + 60px)", // 稍微收紧石头和文字的距离
-            opacity: isTransitioning 
-              ? 0 // 过渡时淡出
-              : (animationState === 'visible' || animationState === 'entering' ? 1 : 0),
-            transform: isTransitioning
-              ? "translateY(30px)" 
-              : (animationState === 'exiting' 
-                  ? "translateY(30px)" 
-                  : "translateY(0)"),
-            transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+            top: "calc(50% + 60px)",
+            opacity: (isTransitioning || !isChoicePhase) ? 0 : (animationState === 'visible' || animationState === 'entering' ? 1 : 0),
+            transform: (isTransitioning || !isChoicePhase) ? "translateY(40px)" : "translateY(0)",
+            transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
-          {/* 标题 */}
           <div className="flex flex-col items-center mb-2">
             <h3 className="text-lg font-light tracking-wide">
               {(animationState === 'visible' || animationState === 'entering') && <InkRevealText text="是否进入Fate Stone" />}
             </h3>
           </div>
-
-          {/* 细线 */}
           <div className="w-px h-5 bg-foreground/20 mb-2" />
-
-          {/* 按钮区域 */}
           <div className="flex gap-4 w-full justify-center px-6 max-w-sm pointer-events-auto">
             <button
               onClick={handleAccept}
-              className="flex-1 border hairline border-foreground py-3 text-sm font-light bg-background text-foreground hover:bg-foreground hover:text-background transition-colors animate-float-button shadow-sm"
+              className="w-32 border hairline border-foreground py-3 text-sm font-light bg-background text-foreground hover:bg-foreground hover:text-background transition-colors animate-float-button shadow-sm"
             >
               接受
             </button>
             <button
               onClick={handleReject}
-              className="flex-1 border hairline border-foreground py-3 text-sm font-light bg-foreground text-background hover:bg-background hover:text-foreground transition-colors animate-float-button-delayed shadow-sm"
+              className="w-32 border hairline border-foreground py-3 text-sm font-light bg-foreground text-background hover:bg-background hover:text-foreground transition-colors animate-float-button-delayed shadow-sm"
             >
               拒绝
             </button>
@@ -350,21 +340,27 @@ export function StoneUnified({
             pointerEvents: "none"
           }}
         >
-          <p className="text-sm opacity-40 font-light mt-8 animate-pulse text-center">
+          <p className="text-sm opacity-40 font-light animate-pulse">
             正在连接命运之石...
           </p>
         </div>
 
         {/* 交互阶段提示 - 绝对定位 */}
-        {phase === "interaction" && (
-          <div className="absolute w-full text-center" style={{ top: "calc(50% + 180px)" }}>
-            <p className="text-sm opacity-60 font-light mt-8 text-center animate-in fade-in duration-1000">
-              长按石头，直到它揭示答案
-            </p>
-          </div>
-        )}
+        <div 
+          className="absolute w-full text-center" 
+          style={{ 
+            top: "calc(50% + 180px)",
+            opacity: phase === "interaction" ? 0.6 : 0,
+            transform: phase === "interaction" ? "translateY(0)" : "translateY(20px)",
+            transition: "all 1s cubic-bezier(0.4, 0, 0.2, 1) 0.5s"
+          }}
+        >
+          <p className="text-sm font-light">
+            长按石头，直到它揭示答案
+          </p>
+        </div>
 
-        {/* 结果阶段层 - 绝对定位 */}
+        {/* 结果阶段层 */}
         {phase === "result" && (
           <div 
             className="absolute w-full flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-1000 pointer-events-auto"
