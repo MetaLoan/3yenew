@@ -186,6 +186,41 @@
     border-radius: 0;
   }
 
+  /* ============================================
+   * 标准按钮样式 - 统一的交互效果
+   * ============================================ */
+  
+  /* 主按钮 - 透明底，hover 反色 */
+  .btn-primary {
+    @apply border border-foreground py-3 text-sm font-light bg-background text-foreground;
+    @apply hover:bg-foreground hover:text-background;
+    @apply transition-colors duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-background disabled:hover:text-foreground;
+    border-width: 0.5px;
+  }
+
+  /* 次按钮 - 实心底，hover 反色 */
+  .btn-secondary {
+    @apply border border-foreground py-3 text-sm font-light bg-foreground text-background;
+    @apply hover:bg-background hover:text-foreground;
+    @apply transition-colors duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-foreground disabled:hover:text-background;
+    border-width: 0.5px;
+  }
+
+  /* 图标按钮 - 用于关闭等小按钮 */
+  .btn-icon {
+    @apply p-2 border border-foreground/30 bg-transparent;
+    @apply hover:bg-foreground/10;
+    @apply transition-colors duration-200;
+    border-width: 0.5px;
+  }
+
+  /* 宽度预设 */
+  .btn-w-32 { @apply w-32; }
+  .btn-w-full { @apply w-full flex-1; }
+  .btn-px-12 { @apply px-12; }
+
   .holographic {
     background: linear-gradient(
       135deg,
@@ -258,6 +293,16 @@
 
   .holographic-animate {
     animation: holographic-pulse 3s ease infinite;
+  }
+
+  /* Holographic shift animation - 镭射彩色流动效果 */
+  @keyframes holographic-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
   }
 
   /* 3D transform utilities */

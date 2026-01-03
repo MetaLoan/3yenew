@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ChatMessage } from "./chat-message"
 import { FunctionEmbed } from "./function-embed"
 import { ChoiceButtons } from "./choice-buttons"
+import { AudioPlayer } from "./audio-player"
 import type { Message } from "@/lib/oracle-types"
 
 interface MessageRendererProps {
@@ -113,6 +114,28 @@ export function MessageRenderer({ message, onFunctionComplete, onFunctionCancel,
         {message.timestamp && (
           <span className="text-[9px] opacity-20 uppercase tracking-widest">{message.timestamp}</span>
         )}
+      </div>
+    )
+  }
+
+  // Echo 音频消息
+  if (message.type === "echo-audio") {
+    return (
+      <div 
+        className="transition-all duration-700"
+        style={{
+          opacity: isVisible ? 1 : 0,
+          transform: isVisible ? "translateY(0)" : "translateY(20px)",
+        }}
+      >
+        <AudioPlayer
+          title={message.title}
+          subtitle={message.subtitle}
+          frequency={message.frequency}
+          duration={message.duration}
+          description={message.description}
+          playCount={0}
+        />
       </div>
     )
   }

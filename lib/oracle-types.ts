@@ -15,6 +15,14 @@ export interface TarotResult {
   interpretation?: string;
 }
 
+export interface EchoResult {
+  frequency: number;      // 频率 Hz
+  duration: number;       // 播放时长（秒）
+  trackName: string;      // 音轨名称
+  purpose: string;        // 用途描述
+  recommendation: string; // 推荐理由
+}
+
 export interface TarotCardData {
   id: string;
   name: string;
@@ -68,10 +76,20 @@ export interface SystemMessage extends BaseMessage {
   content: string;
 }
 
+export interface EchoAudioMessage extends BaseMessage {
+  type: "echo-audio";
+  title: string;
+  subtitle: string;
+  frequency: string;
+  duration: string;
+  description?: string;
+}
+
 export type Message =
   | TextMessage
   | FunctionTriggerMessage
   | FunctionResultMessage
   | FunctionEmbedMessage
   | ChoiceMessage
-  | SystemMessage;
+  | SystemMessage
+  | EchoAudioMessage;

@@ -211,7 +211,7 @@ export function TarotUnified({
       {/* 卡槽区域 - 移到 transform 容器外面，确保 fixed 定位正常工作 */}
       {(isInteraction || phase === "result") && (
         <div 
-          className="fixed left-0 right-0 flex justify-center gap-6 px-6 pointer-events-none z-[110]"
+          className="fixed left-0 right-0 flex justify-center gap-3 px-4 pointer-events-none z-[110]"
           style={{
             top: phase === "result" ? "60px" : "50px",
             transition: "top 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -221,15 +221,14 @@ export function TarotUnified({
             const isReversed = cardOrientations[i] === 'reversed'
             const orientationLabel = isReversed ? '逆位' : '正位'
             return (
-              <div key={i} className="flex flex-col items-center">
+              <div key={i} className="flex flex-col items-center flex-1" style={{ maxWidth: phase === "result" ? "128px" : "96px" }}>
                 <div
                   ref={(el) => { slotRefs.current[i] = el }}
-                  className="border-[0.5px] border-foreground/10 bg-foreground/[0.02] rounded flex items-center justify-center relative overflow-hidden"
+                  className="border-[0.5px] border-foreground/10 bg-foreground/[0.02] rounded flex items-center justify-center relative overflow-hidden w-full"
                   style={{ 
                     perspective: '600px',
-                    width: phase === "result" ? "128px" : "96px",
-                    height: phase === "result" ? "192px" : "144px",
-                    transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                    aspectRatio: '2/3',
+                    transition: "max-width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
                   {drawnCards[i] && (
