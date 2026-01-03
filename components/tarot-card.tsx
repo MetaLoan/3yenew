@@ -18,9 +18,9 @@ export function TarotCard({ card, onReveal, onComplete, isInteractive = true, au
   const handleFlip = () => {
     if (!isInteractive || status !== "idle") return
     
-    setStatus("flipping")
-    setTimeout(() => {
-      setStatus("revealed")
+      setStatus("flipping")
+      setTimeout(() => {
+        setStatus("revealed")
       if (onReveal) onReveal()
       
       if (autoParticlize) {
@@ -32,7 +32,7 @@ export function TarotCard({ card, onReveal, onComplete, isInteractive = true, au
           }, 1000)
         }, 3000) // Wait 3 seconds before dissolving
       }
-    }, 600)
+      }, 600)
   }
 
   // Create particles for disintegration

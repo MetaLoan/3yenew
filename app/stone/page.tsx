@@ -73,7 +73,7 @@ export default function StonePage() {
                  ) : isCompleted ? (
                    <div className="animate-in fade-in zoom-in-90 duration-1000">
                      <DestinySymbol />
-                     <div className="mt-12 text-center">
+                 <div className="mt-12 text-center">
                         <button 
                           onClick={handleReset}
                           className="text-[10px] uppercase tracking-[0.2em] opacity-30 hover:opacity-100 transition-opacity"
@@ -96,8 +96,8 @@ export default function StonePage() {
                          <div className="h-[0.5px] w-12 bg-foreground/20 mx-auto" />
                          <p className="text-xs leading-relaxed opacity-70 italic font-light">
                            <InkRevealText text={selectedCard.meaning} staggerDelay={20} />
-                         </p>
-                       </div>
+                   </p>
+                 </div>
                      )}
                    </div>
                  )}

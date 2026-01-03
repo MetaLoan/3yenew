@@ -8,6 +8,10 @@ export interface StoneResult {
 
 export interface TarotResult {
   cards: TarotCardData[];
+  orientations: ('upright' | 'reversed')[];
+  name: string;      // 牌面名称摘要
+  meaning: string;   // 牌面含义摘要
+  summary: string;   // 完整解读
   interpretation?: string;
 }
 
@@ -17,6 +21,8 @@ export interface TarotCardData {
   image: string;
   keywords: string[];
   meaning: string;
+  uprightMeaning: string;
+  reversedMeaning: string;
 }
 
 interface BaseMessage {

@@ -39,6 +39,10 @@ export function TarotUnified({
   const [excludedCardIds, setExcludedCardIds] = useState<string[]>([])
   const [flyingCard, setFlyingCard] = useState<FlyingCard | null>(null)
   const [flippedSlots, setFlippedSlots] = useState<boolean[]>([false, false, false]) // 跟踪每个槽位是否已翻面
+  const [cardOrientations, setCardOrientations] = useState<('upright' | 'reversed')[]>([]) // 正位/逆位
+  
+  // 槽位标签
+  const slotLabels = ["过去", "现在", "未来"]
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const slotRefs = useRef<Array<HTMLDivElement | null>>([])
   const timeoutsRef = useRef<number[]>([])
@@ -62,6 +66,7 @@ export function TarotUnified({
       setExcludedCardIds([])
       setFlyingCard(null)
       setFlippedSlots([false, false, false])
+      setCardOrientations([])
       setShowExitConfirm(false)
       setAnimationState('hidden')
       schedule(() => setAnimationState('visible'), 50)
@@ -100,6 +105,10 @@ export function TarotUnified({
 
     // 立即排除这张卡，防止后续循环再出现
     setExcludedCardIds(prev => [...prev, card.id])
+    
+    // 随机决定正位/逆位（50% 概率）
+    const orientation: 'upright' | 'reversed' = Math.random() > 0.5 ? 'upright' : 'reversed'
+    setCardOrientations(prev => [...prev, orientation])
 
     schedule(() => {
       // 动画结束后才将卡片放入槽位（此时仍显示牌背）
@@ -125,12 +134,30 @@ export function TarotUnified({
   const handleFinalComplete = useCallback(() => {
     if (drawnCards.length === 0) return
     setPhase("exiting")
+    
+    // 生成牌面名称摘要
+    const cardNames = drawnCards.map((card, i) => {
+      const orientation = cardOrientations[i] === 'reversed' ? '逆位' : '正位'
+      return `${slotLabels[i]}·${card.name}(${orientation})`
+    }).join('、')
+    
+    // 生成完整解读
+    const fullSummary = drawnCards.map((card, i) => {
+      const isReversed = cardOrientations[i] === 'reversed'
+      const interpretation = isReversed ? card.reversedMeaning : card.uprightMeaning
+      return `【${slotLabels[i]}·${card.name}·${isReversed ? '逆位' : '正位'}】${interpretation}`
+    }).join('\n\n')
+    
     const result: TarotResult = {
       cards: drawnCards,
+      orientations: cardOrientations,
+      name: cardNames,
+      meaning: drawnCards[0]?.meaning || '',
+      summary: fullSummary,
       interpretation: `三张牌阵揭示了你的过去、现在与未来。`
     }
     schedule(() => onComplete(result), 800)
-  }, [drawnCards, onComplete, schedule])
+  }, [drawnCards, cardOrientations, onComplete, schedule])
 
   if (!isVisible) return null
 
@@ -181,6 +208,136 @@ export function TarotUnified({
         </button>
       )}
 
+      {/* 卡槽区域 - 移到 transform 容器外面，确保 fixed 定位正常工作 */}
+      {(isInteraction || phase === "result") && (
+        <div 
+          className="fixed left-0 right-0 flex justify-center gap-6 px-6 pointer-events-none z-[110]"
+          style={{
+            top: phase === "result" ? "60px" : "50px",
+            transition: "top 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          {[0, 1, 2].map(i => {
+            const isReversed = cardOrientations[i] === 'reversed'
+            const orientationLabel = isReversed ? '逆位' : '正位'
+            return (
+              <div key={i} className="flex flex-col items-center">
+                <div
+                  ref={(el) => { slotRefs.current[i] = el }}
+                  className="border-[0.5px] border-foreground/10 bg-foreground/[0.02] rounded flex items-center justify-center relative overflow-hidden"
+                  style={{ 
+                    perspective: '600px',
+                    width: phase === "result" ? "128px" : "96px",
+                    height: phase === "result" ? "192px" : "144px",
+                    transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                  }}
+                >
+                  {drawnCards[i] && (
+                    <div 
+                      className="w-full h-full relative"
+                      style={{
+                        transformStyle: 'preserve-3d',
+                        transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: flippedSlots[i] ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                      }}
+                    >
+                      {/* 牌背 */}
+                      <div 
+                        className="absolute inset-0 bg-background flex items-center justify-center p-1 rounded"
+                        style={{ backfaceVisibility: 'hidden' }}
+                      >
+                        <div className="w-full h-full border hairline border-foreground/30 rounded-sm flex items-center justify-center">
+                          <svg width="32" height="32" viewBox="0 0 200 200" className="opacity-60">
+                            <path d="M 10 100 Q 100 45 190 100 Q 100 155 10 100 Z" fill="none" stroke="black" strokeWidth="3" />
+                            <ellipse cx="100" cy="100" rx="8" ry="26" fill="black" />
+                          </svg>
+                        </div>
+                      </div>
+                      {/* 牌面 - 逆位时旋转180度 */}
+                      <div 
+                        className="absolute inset-0"
+                        style={{ 
+                          backfaceVisibility: 'hidden',
+                          transform: `rotateY(180deg) ${isReversed ? 'rotate(180deg)' : ''}`,
+                        }}
+                      >
+                        <img src={drawnCards[i].image} alt={drawnCards[i].name} className="w-full h-full object-cover grayscale rounded" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* 位置标签 - 只在结果阶段显示 */}
+                {phase === "result" && drawnCards[i] && (
+                  <p 
+                    className="text-[10px] text-foreground/50 mt-2 tracking-wider"
+                    style={{
+                      opacity: flippedSlots[i] ? 1 : 0,
+                      transition: 'opacity 0.5s ease-out 0.3s',
+                    }}
+                  >
+                    {slotLabels[i]}·{orientationLabel}
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* 剩余卡片提示 - 在卡槽下方、瀑布流上方 */}
+      {isInteraction && drawnCards.length < 3 && (
+        <div 
+          className="fixed left-0 right-0 flex justify-center pointer-events-none z-[105]"
+          style={{
+            top: "210px",
+            transition: "opacity 0.5s ease-out",
+          }}
+        >
+          <p className="text-xs text-foreground/40 tracking-widest">
+            {3 - drawnCards.length} cards remaining
+          </p>
+        </div>
+      )}
+
+      {/* 结果页面的标题和解读 - 使用 fixed 定位，在卡牌下方 */}
+      {phase === "result" && (
+        <div 
+          className="fixed left-0 right-0 flex flex-col items-center pointer-events-none px-6 z-[105]"
+          style={{
+            top: "300px",
+            opacity: 1,
+            transition: "opacity 0.8s ease-out",
+          }}
+        >
+          <InkRevealText text="基础卡牌解读" className="text-lg font-light mb-4" />
+          
+          {/* 三张卡牌的详细解读 */}
+          <div className="w-full max-w-md space-y-4 mb-6">
+            {drawnCards.map((card, i) => {
+              const isReversed = cardOrientations[i] === 'reversed'
+              const interpretation = isReversed ? card.reversedMeaning : card.uprightMeaning
+              return (
+                <div key={card.id} className="text-left">
+                  <p className="text-xs font-medium text-foreground mb-1">
+                    {slotLabels[i]} · {card.name} · {isReversed ? '逆位' : '正位'}
+                  </p>
+                  <p className="text-xs text-foreground/60 leading-relaxed">
+                    {interpretation}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+          
+          <button 
+            onClick={handleFinalComplete} 
+            className="px-12 py-3 border hairline border-foreground text-sm font-light hover:bg-foreground hover:text-background transition-all pointer-events-auto"
+          >
+            Continue
+          </button>
+        </div>
+      )}
+
       <div 
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -192,65 +349,6 @@ export function TarotUnified({
           willChange: "transform, opacity, filter",
         }}
       >
-        {/* 卡槽区域 - 在 interaction 和 result 阶段都显示，通过动画过渡位置 */}
-        {(isInteraction || phase === "result") && (
-          <div 
-            className="absolute left-0 right-0 flex justify-center gap-6 px-6 pointer-events-none z-10"
-            style={{
-              top: phase === "result" ? "calc(50% - 140px)" : "80px",
-              transition: "top 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
-            {[0, 1, 2].map(i => (
-              <div
-                key={i}
-                ref={(el) => { slotRefs.current[i] = el }}
-                className="border-[0.5px] border-foreground/10 bg-foreground/[0.02] rounded flex items-center justify-center relative overflow-hidden"
-                style={{ 
-                  perspective: '600px',
-                  width: phase === "result" ? "128px" : "96px",
-                  height: phase === "result" ? "192px" : "144px",
-                  transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              >
-                {drawnCards[i] && (
-                  <div 
-                    className="w-full h-full relative"
-                    style={{
-                      transformStyle: 'preserve-3d',
-                      transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                      transform: flippedSlots[i] ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                    }}
-                  >
-                    {/* 牌背 */}
-                    <div 
-                      className="absolute inset-0 bg-background flex items-center justify-center p-1 rounded"
-                      style={{ backfaceVisibility: 'hidden' }}
-                    >
-                      <div className="w-full h-full border hairline border-foreground/30 rounded-sm flex items-center justify-center">
-                        <svg width="32" height="32" viewBox="0 0 200 200" className="opacity-60">
-                          <path d="M 10 100 Q 100 45 190 100 Q 100 155 10 100 Z" fill="none" stroke="black" strokeWidth="3" />
-                          <ellipse cx="100" cy="100" rx="8" ry="26" fill="black" />
-                        </svg>
-                      </div>
-                    </div>
-                    {/* 牌面 */}
-                    <div 
-                      className="absolute inset-0"
-                      style={{ 
-                        backfaceVisibility: 'hidden',
-                        transform: 'rotateY(180deg)',
-                      }}
-                    >
-                      <img src={drawnCards[i].image} alt={drawnCards[i].name} className="w-full h-full object-cover grayscale rounded" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* 牌组区域 - 在 result 阶段淡出 */}
         <div 
           className="relative pointer-events-auto"
@@ -273,26 +371,6 @@ export function TarotUnified({
               excludedCardIds={excludedCardIds}
             />
           )}
-        </div>
-
-        {/* 结果页面的标题和按钮 - 淡入显示 */}
-        <div 
-          className="absolute left-0 right-0 flex flex-col items-center pointer-events-none"
-          style={{
-            top: "calc(50% + 80px)",
-            opacity: phase === "result" ? 1 : 0,
-            transform: phase === "result" ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.8s ease-out 0.3s, transform 0.8s ease-out 0.3s",
-            pointerEvents: phase === "result" ? "auto" : "none",
-          }}
-        >
-          <InkRevealText text="三张牌阵" className="text-xl font-light mb-6" />
-          <p className="text-xs opacity-60 max-w-md text-center leading-relaxed mb-8 px-6">
-            过去、现在与未来的能量交织，引导着你此刻的困惑与抉择
-          </p>
-          <button onClick={handleFinalComplete} className="px-12 py-3 border hairline border-foreground text-sm font-light hover:bg-foreground hover:text-background transition-all">
-            Continue
-          </button>
         </div>
 
         {isChoicePhase && (

@@ -555,12 +555,12 @@ export function DestinyChart({ mode, showChart = true, selectedHour, onSelectHou
                 width: `${width}px`, 
                 height: `${height}px`,
                 left: '50%',
-                top: showReading ? 'calc(50% - 15px)' : 'calc(50% + 10px)',
+                top: showReading ? '40px' : '50px',
                 transform: isShrinking 
-                  ? 'translate(-50%, -50%) scale(0.9)' 
+                  ? 'translateX(-50%) scale(0.9)' 
                   : showReading 
-                    ? 'translate(-50%, -50%) scale(1.1)'
-                    : 'translate(-50%, -50%) scale(1)',
+                    ? 'translateX(-50%) scale(1.1)'
+                    : 'translateX(-50%) scale(1)',
                 opacity: isBlurring ? 0 : 1,
                 filter: isBlurring ? 'blur(20px)' : 'blur(0px)',
                 transition: 'opacity 0.5s ease-out, filter 0.5s ease-out, transform 0.5s ease-out, top 0.5s ease-out'
