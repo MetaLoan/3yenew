@@ -9,6 +9,7 @@ import { OracleThinking } from "@/components/oracle-thinking"
 import { StoneUnified } from "@/components/stone-unified"
 import { TarotUnified } from "@/components/tarot-unified"
 import { EchoUnified } from "@/components/echo-unified"
+import { ConnectUnified } from "@/components/connect-unified"
 import { FunctionButtons } from "@/components/function-buttons"
 import { detectIntent } from "@/lib/intent-detection"
 import { generateDeepInterpretation, type ConversationState } from "@/lib/oracle-conversation"
@@ -38,7 +39,7 @@ export default function OraclePage() {
   const [stoneResult, setStoneResult] = useState<StoneResult | null>(null)
   const [tarotResult, setTarotResult] = useState<TarotResult | null>(null)
   const [echoResult, setEchoResult] = useState<EchoResult | null>(null)
-  const [selectedFunction, setSelectedFunction] = useState<"stone" | "tarot" | "echo" | null>(null)
+  const [selectedFunction, setSelectedFunction] = useState<"stone" | "tarot" | "echo" | "connect" | null>(null)
   
   // Echo 推荐参数
   const [echoRecommendation, setEchoRecommendation] = useState({
@@ -417,10 +418,83 @@ export default function OraclePage() {
     }, 100)
   }
 
+  // 处理Connect完成
+  const handleConnectComplete = (result: any) => {
+    if (conversationState === "connect_completed") return
+    
+    setConversationState("connect_completed")
+    setInput("")
+    
+    const systemEvent: SystemMessage = {
+      id: generateMessageId(),
+      type: "system",
+      content: `你刚刚完成了磁场连接`,
+      isUser: false,
+      timestamp: "Just now",
+    }
+    
+    setMessages((prev) => [...prev, systemEvent])
+    
+    setTimeout(() => {
+      const interpretationMessage: TextMessage = {
+        id: generateMessageId(),
+        type: "text",
+        content: "磁场连接已完成。Oracle 已同步你们的能量场。",
+        isUser: false,
+        timestamp: "Just now",
+      }
+      setMessages((prev) => [...prev, interpretationMessage])
+      
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        })
+      }, 100)
+      
+      setConversationState("normal")
+      setUserQuestion("")
+      setSelectedFunction(null)
+    }, 2000)
+  }
+
+  // 处理Connect退出
+  const handleConnectExit = () => {
+    setConversationState("normal")
+    setEyeDirection("center")
+    setSelectedFunction(null)
+  }
+
+  // 处理Connect选择接受
+  const handleConnectChoiceAccept = () => {
+    setConversationState("connect_fullscreen")
+  }
+
+  // 处理Connect选择拒绝
+  const handleConnectChoiceReject = () => {
+    const rejectMessage: TextMessage = {
+      id: generateMessageId(),
+      type: "text",
+      content: "我理解了。也许现在还不是时候。当你准备好时，Connect会一直在那里等待你。",
+      isUser: false,
+      timestamp: "Just now",
+    }
+    setMessages((prev) => [...prev, rejectMessage])
+    setConversationState("normal")
+    setSelectedFunction(null)
+    
+    setTimeout(() => {
+      scrollContainerRef.current?.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      })
+    }, 100)
+  }
+
   // 处理功能按钮点击（用户可随时切换）
-  const handleFunctionButtonClick = (func: "stone" | "tarot" | "echo") => {
+  const handleFunctionButtonClick = (func: "stone" | "tarot" | "echo" | "connect") => {
     // 如果正在全屏交互中，不允许切换
-    if (conversationState === "stone_fullscreen" || conversationState === "tarot_fullscreen" || conversationState === "echo_fullscreen") return
+    if (conversationState === "stone_fullscreen" || conversationState === "tarot_fullscreen" || conversationState === "echo_fullscreen" || conversationState === "connect_fullscreen") return
     
     // 如果 Echo 正在后台生成，点击 Echo 按钮重新打开生成弹窗
     if (func === "echo" && isEchoGenerating) {
@@ -432,7 +506,12 @@ export default function OraclePage() {
     // 重置状态，开始新的功能交互
     setSelectedFunction(func)
     setUserQuestion("")
-    setConversationState(func === "stone" ? "stone_triggered" : func === "tarot" ? "tarot_triggered" : "echo_triggered")
+    setConversationState(
+      func === "stone" ? "stone_triggered" : 
+      func === "tarot" ? "tarot_triggered" : 
+      func === "echo" ? "echo_triggered" : 
+      "connect_triggered"
+    )
     
     // 眼睛看向思考方向
     setEyeDirection("down-left")
@@ -763,6 +842,7 @@ export default function OraclePage() {
           const funcNames: Record<string, string> = {
             stone: "Destiny Stone（命运之石）",
             tarot: "Tarot（塔罗牌）",
+            connect: "Connect（磁场连接）",
           }
           confirmContent = `好的，我理解了你的困惑。${funcNames[currentFunc]} 已经准备好了，如果你准备好了就开始吧。`
         }
@@ -775,7 +855,12 @@ export default function OraclePage() {
           timestamp: "Just now",
         }
         setMessages((prev) => [...prev, confirmMessage])
-        setConversationState(currentFunc === "stone" ? "suggesting_stone" : currentFunc === "tarot" ? "suggesting_tarot" : "suggesting_echo")
+        setConversationState(
+          currentFunc === "stone" ? "suggesting_stone" : 
+          currentFunc === "tarot" ? "suggesting_tarot" : 
+          currentFunc === "echo" ? "suggesting_echo" : 
+          "suggesting_connect"
+        )
         
         // 延迟显示选择按钮（在输入框位置）
         setTimeout(() => {
@@ -886,6 +971,7 @@ export default function OraclePage() {
                   onStoneClick={() => handleFunctionButtonClick("stone")}
                   onTarotClick={() => handleFunctionButtonClick("tarot")}
                   onEchoClick={() => handleFunctionButtonClick("echo")}
+                  onConnectClick={() => handleFunctionButtonClick("connect")}
                   disabled={false}
                   echoGenerating={isEchoGenerating}
                   echoProgress={echoGenerateProgress}
@@ -943,22 +1029,33 @@ export default function OraclePage() {
         />
       )}
 
-      {/* 统一Echo交互 */}
-{selectedFunction === "echo" && (
-            <EchoUnified
-              isVisible={conversationState === "waiting_for_choice" || conversationState === "echo_fullscreen"}
-              recommendation={echoRecommendation.recommendation}
-              frequency={echoRecommendation.frequency}
-              trackName={echoRecommendation.trackName}
-              isGenerating={isEchoGenerating}
-              externalProgress={echoGenerateProgress}
-              onAccept={handleEchoChoiceAccept}
-              onReject={handleEchoChoiceReject}
-              onCancel={handleEchoCancel}
-              onComplete={handleEchoComplete}
-              onExit={handleEchoExit}
-            />
-          )}
+{/* 统一Echo交互 */}
+      {selectedFunction === "echo" && (
+        <EchoUnified
+          isVisible={conversationState === "waiting_for_choice" || conversationState === "echo_fullscreen"}
+          recommendation={echoRecommendation.recommendation}
+          frequency={echoRecommendation.frequency}
+          trackName={echoRecommendation.trackName}
+          isGenerating={isEchoGenerating}
+          externalProgress={echoGenerateProgress}
+          onAccept={handleEchoChoiceAccept}
+          onReject={handleEchoChoiceReject}
+          onCancel={handleEchoCancel}
+          onComplete={handleEchoComplete}
+          onExit={handleEchoExit}
+        />
+      )}
+
+      {/* 统一Connect交互 */}
+      {selectedFunction === "connect" && (
+        <ConnectUnified
+          isVisible={conversationState === "waiting_for_choice" || conversationState === "connect_fullscreen"}
+          onAccept={handleConnectChoiceAccept}
+          onReject={handleConnectChoiceReject}
+          onComplete={handleConnectComplete}
+          onExit={handleConnectExit}
+        />
+      )}
 
       <BottomNav />
     </main>

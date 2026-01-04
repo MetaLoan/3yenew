@@ -1,11 +1,12 @@
 "use client"
 
-import { Circle, Sparkles, Music } from "lucide-react"
+import { Circle, Sparkles, Music, Users } from "lucide-react"
 
 interface FunctionButtonsProps {
   onStoneClick: () => void
   onTarotClick: () => void
   onEchoClick: () => void
+  onConnectClick: () => void
   disabled?: boolean
   echoGenerating?: boolean
   echoProgress?: number
@@ -15,6 +16,7 @@ export function FunctionButtons({
   onStoneClick, 
   onTarotClick, 
   onEchoClick,
+  onConnectClick,
   disabled = false,
   echoGenerating = false,
   echoProgress = 0
@@ -38,6 +40,12 @@ export function FunctionButtons({
       onClick: onEchoClick,
       description: "心灵回响",
       isEcho: true
+    },
+    { 
+      name: "CONNECT", 
+      icon: Users, 
+      onClick: onConnectClick,
+      description: "磁场连接"
     },
   ]
 
