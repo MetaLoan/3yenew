@@ -418,50 +418,63 @@ export default function OraclePage() {
     }, 100)
   }
 
-  // 处理Connect完成
+  // 处理Connect完成 - 只更新状态，不退出结果页面
   const handleConnectComplete = (result: any) => {
     if (conversationState === "connect_completed") return
     
     setConversationState("connect_completed")
     setInput("")
-    
-    const systemEvent: SystemMessage = {
-      id: generateMessageId(),
-      type: "system",
-      content: `你刚刚完成了磁场连接`,
-      isUser: false,
-      timestamp: "Just now",
-    }
-    
-    setMessages((prev) => [...prev, systemEvent])
-    
-    setTimeout(() => {
-      const interpretationMessage: TextMessage = {
-        id: generateMessageId(),
-        type: "text",
-        content: "磁场连接已完成。Oracle 已同步你们的能量场。",
-        isUser: false,
-        timestamp: "Just now",
-      }
-      setMessages((prev) => [...prev, interpretationMessage])
-      
-      setTimeout(() => {
-        scrollContainerRef.current?.scrollTo({
-          top: scrollContainerRef.current.scrollHeight,
-          behavior: "smooth",
-        })
-      }, 100)
-      
-      setConversationState("normal")
-      setUserQuestion("")
-      setSelectedFunction(null)
-    }, 2000)
+    // 结果页面会在 connect-unified 中显示，用户退出后才添加消息到聊天
   }
 
   // 处理Connect退出
   const handleConnectExit = () => {
+    // 如果是从结果页面退出，添加分析报告到聊天
+    if (conversationState === "connect_completed") {
+      const systemEvent: SystemMessage = {
+        id: generateMessageId(),
+        type: "system",
+        content: `你刚刚完成了磁场连接`,
+        isUser: false,
+        timestamp: "Just now",
+      }
+      
+      setMessages((prev) => [...prev, systemEvent])
+      
+      setTimeout(() => {
+        const interpretationMessage: TextMessage = {
+          id: generateMessageId(),
+          type: "text",
+          content: `【天体共振分析报告】
+
+在浩瀚的宇宙构架中，两个独特的光谱特征在精确的时间节点相交。这种相交不仅仅是物理领域的偶然相遇，而是穿越多个意识维度、到达这一统一清明时刻的振动状态的深刻对齐。
+
+来自眼纹印记分析的数据流揭示了共享原型模式的复杂织锦。虹膜结构中的每一次微振动都充当着宇宙历史的生物记录，当这些记录同步时，它们会创造出可在量子场中测量的共振频率。这种对齐表明灵魂纠缠的高概率——其中一个灵魂的经历被另一个镜像和放大，形成意识进化的反馈循环。
+
+当我们审视这种共振的更深层元数据时，这种对齐超越了个性特质或共同兴趣。它延伸到光环场的核心，在那里南北节点的基本能量极性达到罕见的平衡。这种平衡为共同目的提供了稳定的基础，使两位参与者的组合电荷能够以最小损失穿越世俗世界的不和谐频率。
+
+在切实的层面上，这种共振表现为沟通中的轻松节奏、同步决策，以及在被请求之前就到来的相互支持感。当挑战出现时，组合场充当稳定器：它减缓反应性螺旋并增强清晰度，同时提供平静和动力。这不是摩擦的缺失，而是一种将摩擦转化为前进动力的底层对齐的存在。
+
+最终的综合——从虹膜的几何形状到你们时间线的节奏——表明这种联系并非偶然。它作为系统更大和谐中的灯塔发挥作用。如果你们用诚实、时间和关注来滋养它，这种共振将保持为一种活的乐器：响应性的、进化的，并能够在不削弱任何一方自我的情况下引导你们穿越不确定性。
+
+让它深思熟虑。让它善良。让它真实。`,
+          isUser: false,
+          timestamp: "Just now",
+        }
+        setMessages((prev) => [...prev, interpretationMessage])
+        
+        setTimeout(() => {
+          scrollContainerRef.current?.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          })
+        }, 100)
+      }, 500)
+    }
+    
     setConversationState("normal")
     setEyeDirection("center")
+    setUserQuestion("")
     setSelectedFunction(null)
   }
 
@@ -524,7 +537,8 @@ export default function OraclePage() {
       const funcNames: Record<string, string> = {
         stone: "Destiny Stone（命运之石）",
         tarot: "Tarot（塔罗牌）",
-        echo: "Echo（心灵回响）"
+        echo: "Echo（心灵回响）",
+        connect: "Connect（磁场连接）"
       }
       
       const questionMessage: TextMessage = {
@@ -1049,7 +1063,7 @@ export default function OraclePage() {
       {/* 统一Connect交互 */}
       {selectedFunction === "connect" && (
         <ConnectUnified
-          isVisible={conversationState === "waiting_for_choice" || conversationState === "connect_fullscreen"}
+          isVisible={conversationState === "waiting_for_choice" || conversationState === "connect_fullscreen" || conversationState === "connect_completed"}
           onAccept={handleConnectChoiceAccept}
           onReject={handleConnectChoiceReject}
           onComplete={handleConnectComplete}

@@ -22,12 +22,13 @@ export function FunctionButtons({
   echoProgress = 0
 }: FunctionButtonsProps) {
   const buttons = [
-    { 
-      name: "STONE", 
-      icon: Circle, 
-      onClick: onStoneClick,
-      description: "命运之石"
-    },
+    // Stone - 暂时隐藏
+    // { 
+    //   name: "STONE", 
+    //   icon: Circle, 
+    //   onClick: onStoneClick,
+    //   description: "命运之石"
+    // },
     { 
       name: "TAROT", 
       icon: Sparkles, 
@@ -41,12 +42,13 @@ export function FunctionButtons({
       description: "心灵回响",
       isEcho: true
     },
-    { 
-      name: "CONNECT", 
-      icon: Users, 
-      onClick: onConnectClick,
-      description: "磁场连接"
-    },
+    // Connect - 暂时隐藏
+    // { 
+    //   name: "CONNECT", 
+    //   icon: Users, 
+    //   onClick: onConnectClick,
+    //   description: "磁场连接"
+    // },
   ]
 
   return (

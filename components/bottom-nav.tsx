@@ -25,24 +25,25 @@ const navItems = [
       </svg>
     ),
   },
-  {
-    name: "Stone",
-    href: "/stone",
-    icon: (active: boolean) => (
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="0.5"
-        className={cn(active && "holographic")}
-      >
-        <circle cx="12" cy="12" r="8" />
-        <circle cx="12" cy="12" r="3" fill={active ? "url(#holographic)" : "none"} />
-      </svg>
-    ),
-  },
+  // Stone - 暂时隐藏
+  // {
+  //   name: "Stone",
+  //   href: "/stone",
+  //   icon: (active: boolean) => (
+  //     <svg
+  //       width="24"
+  //       height="24"
+  //       viewBox="0 0 24 24"
+  //       fill="none"
+  //       stroke="currentColor"
+  //       strokeWidth="0.5"
+  //       className={cn(active && "holographic")}
+  //     >
+  //       <circle cx="12" cy="12" r="8" />
+  //       <circle cx="12" cy="12" r="3" fill={active ? "url(#holographic)" : "none"} />
+  //     </svg>
+  //   ),
+  // },
   {
     name: "Echo",
     href: "/echo",
@@ -63,16 +64,17 @@ const navItems = [
       </svg>
     ),
   },
-  {
-    name: "Connect",
-    href: "/connect",
-    icon: (active: boolean) => (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5">
-        <path d="M2 12 L6 8 L10 14 L14 6 L18 10 L22 6" />
-        <path d="M2 18 L6 14 L10 20 L14 12 L18 16 L22 12" />
-      </svg>
-    ),
-  },
+  // Connect - 暂时隐藏
+  // {
+  //   name: "Connect",
+  //   href: "/connect",
+  //   icon: (active: boolean) => (
+  //     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5">
+  //       <path d="M2 12 L6 8 L10 14 L14 6 L18 10 L22 6" />
+  //       <path d="M2 18 L6 14 L10 20 L14 12 L18 16 L22 12" />
+  //     </svg>
+  //   ),
+  // },
 ]
 
 export function BottomNav() {
